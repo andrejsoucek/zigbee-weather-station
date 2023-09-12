@@ -39,12 +39,11 @@ void setup() {
 }
 
 double readWindSpeed() {
-  int analogValue = analogRead(A0);
-  int maxWindSpeed = 30;
-  double voltage = map(analogValue, 0, 1023, 0, 2500); // map 1024 values to 2500 mV
-  voltage /= 100; // convert to mV to V
-
-  return voltage / 5 * maxWindSpeed * 1.944; // convert m/s to kts
+  double voltage = map(analogValue, 0, 1023, 0, 2500); // map 1024 values to 25 V with 2 decimals precision
+  double mps = map(voltage, 0, 500, 0, 3000); // map 500 values (5V) to 30 m/s with 2 decimals precision
+  mps /= 100; // divide by 100 to get the m/s with 2 decimals
+  
+  return  mps * 1.944; // convert m/s to kts
 }
 
 void loop() {
