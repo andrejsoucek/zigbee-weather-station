@@ -8,6 +8,8 @@
 #define ENV_SAMPLE_INTERVAL_MS 300000
 #define GUST_INTERVAL_MS 600000
 #define WIND_AVERAGE_INTERVAL_MS 60000
+#define RAIN_INTERVAL_MS 2000
+#define FORCE_RAIN_UPDATE_INTERVAL_MS 60000
 
 #define ALTITUDE_M 242 // weather station altitude to calculate QNH
 
@@ -18,6 +20,9 @@ unsigned long windStartTime = 0;
 unsigned long gustStartTime = 0;
 unsigned long averageStartTime = 0;
 unsigned long envStartTime = 0;
+unsigned long rainCheckStartTime = 0;
+unsigned long forceRainUpdateStartTime = 0;
+int lastRainValue = 1;
 
 BME280I2C bme;
 OneWire oneWire(9); // temperature sensor pin - D9
@@ -38,10 +43,16 @@ void setup() {
 
   sensors.begin();
 
-  windStartTime = millis();
-  gustStartTime = millis();
-  averageStartTime = millis();
-  envStartTime = millis();
+  pinMode(4, OUTPUT); // rain sensor power pin - D4
+  digitalWrite(4, LOW); // cut the power
+
+  unsigned long time = millis();
+  windStartTime = time;
+  gustStartTime = time;
+  averageStartTime = time;
+  envStartTime = time;
+  rainCheckStartTime = time;
+  forceRainUpdateStartTime = time;
 }
 
 double readWindSpeed() {
@@ -107,5 +118,24 @@ void loop() {
     // reset variables for the next 10-minute period
     maxWindSpeed = 0;
     gustStartTime = currentTime;
+  }
+
+  // read rain sensor
+  if (currentTime - rainCheckStartTime >= RAIN_INTERVAL_MS) {
+    digitalWrite(4, HIGH);
+    delay(100);
+    int val = digitalRead(5);
+    digitalWrite(4, LOW);
+    if (lastRainValue != val) {
+      lastRainValue = val;
+      String isRaining = lastRainValue == 0 ? "true" : "false";
+      Serial.print("{\"7\":" + isRaining + "}");
+    }
+    if (currentTime - forceRainUpdateStartTime >= FORCE_RAIN_UPDATE_INTERVAL_MS) {
+      String isRaining = val == 0 ? "true" : "false";
+      Serial.print("{\"7\":" + isRaining + "}");
+    }
+    rainCheckStartTime = currentTime;
+    forceRainUpdateStartTime = currentTime;
   }
 }
