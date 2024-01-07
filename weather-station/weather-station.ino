@@ -43,8 +43,7 @@ void setup() {
 
   sensors.begin();
 
-  pinMode(4, OUTPUT); // rain sensor power pin - D4
-  digitalWrite(4, LOW); // cut the power
+  pinMode(4, INPUT);
 
   unsigned long time = millis();
   windStartTime = time;
@@ -60,7 +59,7 @@ double readWindSpeed() {
   double voltage = map(analogValue, 0, 1023, 0, 2500); // map 1024 values to 25 V with 2 decimals precision
   double mps = map(voltage, 0, 500, 0, 3000); // map 500 values (5V) to 30 m/s with 2 decimals precision
   mps /= 100; // divide by 100 to get the m/s with 2 decimals
-  
+
   return  mps * 1.944; // convert m/s to kts
 }
 
@@ -122,17 +121,14 @@ void loop() {
 
   // read rain sensor
   if (currentTime - rainCheckStartTime >= RAIN_INTERVAL_MS) {
-    digitalWrite(4, HIGH);
-    delay(100);
-    int val = digitalRead(5);
-    digitalWrite(4, LOW);
+    int val = digitalRead(rainSensorPin);
     if (lastRainValue != val) {
       lastRainValue = val;
-      String isRaining = lastRainValue == 0 ? "true" : "false";
+      String isRaining = lastRainValue == LOW ? "true" : "false";
       Serial.print("{\"7\":" + isRaining + "}");
     }
     if (currentTime - forceRainUpdateStartTime >= FORCE_RAIN_UPDATE_INTERVAL_MS) {
-      String isRaining = val == 0 ? "true" : "false";
+      String isRaining = val == LOW ? "true" : "false";
       Serial.print("{\"7\":" + isRaining + "}");
     }
     rainCheckStartTime = currentTime;
