@@ -5,9 +5,9 @@
 #include <DallasTemperature.h>
 
 #define WIND_SAMPLE_INTERVAL_MS 5000
-#define ENV_SAMPLE_INTERVAL_MS 300000
 #define GUST_INTERVAL_MS 600000
 #define WIND_AVERAGE_INTERVAL_MS 60000
+#define ENV_SAMPLE_INTERVAL_MS 300000
 #define RAIN_INTERVAL_MS 2000
 #define FORCE_RAIN_UPDATE_INTERVAL_MS 60000
 
@@ -16,12 +16,12 @@
 float maxWindSpeed = 0;
 float totalWindSpeed = 0;
 unsigned int sampleCount = 0;
-unsigned long windStartTime = 0;
-unsigned long gustStartTime = 0;
-unsigned long averageStartTime = 0;
-unsigned long envStartTime = 0;
-unsigned long rainCheckStartTime = 0;
-unsigned long forceRainUpdateStartTime = 0;
+unsigned long envStartTime = -ENV_SAMPLE_INTERVAL_MS;
+unsigned long windStartTime = -WIND_SAMPLE_INTERVAL_MS;
+unsigned long averageStartTime = -WIND_AVERAGE_INTERVAL_MS0;
+unsigned long gustStartTime = -GUST_INTERVAL_MS;
+unsigned long rainCheckStartTime = -RAIN_INTERVAL_MS;
+unsigned long forceRainUpdateStartTime = -FORCE_RAIN_UPDATE_INTERVAL_MS;
 int lastRainValue = 1;
 
 BME280I2C bme;
@@ -32,7 +32,10 @@ void setup() {
   // initiate serial communication with 9600 baud rate
   Serial.begin(9600);
 
-  while(!Serial) {} // wait for serial to be ready
+  while(!Serial) {
+    Serial.println("Waiting for serial port to connect...");
+    delay(1000);
+  }
 
   Wire.begin();
   while(!bme.begin())
@@ -42,8 +45,10 @@ void setup() {
   }
 
   sensors.begin();
+  Serial.println("Sensors ready!");
 
   pinMode(4, INPUT);
+  Serial.println("Weather station initialized!");
 
   unsigned long time = millis();
   windStartTime = time;
@@ -55,12 +60,12 @@ void setup() {
 }
 
 double readWindSpeed() {
-  int analogValue = analogRead(A0); // BME sensor pin - A0
+  int analogValue = analogRead(A0); // wind speed sensor pin - A0
   double voltage = map(analogValue, 0, 1023, 0, 2500); // map 1024 values to 25 V with 2 decimals precision
   double mps = map(voltage, 0, 500, 0, 3000); // map 500 values (5V) to 30 m/s with 2 decimals precision
   mps /= 100; // divide by 100 to get the m/s with 2 decimals
 
-  return  mps * 1.944; // convert m/s to kts
+  return mps * 1.944; // convert m/s to kts
 }
 
 void loop() {
@@ -121,7 +126,7 @@ void loop() {
 
   // read rain sensor
   if (currentTime - rainCheckStartTime >= RAIN_INTERVAL_MS) {
-    int val = digitalRead(rainSensorPin);
+    int val = digitalRead(4);
     if (lastRainValue != val) {
       lastRainValue = val;
       String isRaining = lastRainValue == LOW ? "true" : "false";
