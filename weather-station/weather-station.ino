@@ -18,7 +18,7 @@ float totalWindSpeed = 0;
 unsigned int sampleCount = 0;
 unsigned long envStartTime = -ENV_SAMPLE_INTERVAL_MS;
 unsigned long windStartTime = -WIND_SAMPLE_INTERVAL_MS;
-unsigned long averageStartTime = -WIND_AVERAGE_INTERVAL_MS0;
+unsigned long averageStartTime = -WIND_AVERAGE_INTERVAL_MS;
 unsigned long gustStartTime = -GUST_INTERVAL_MS;
 unsigned long rainCheckStartTime = -RAIN_INTERVAL_MS;
 unsigned long forceRainUpdateStartTime = -FORCE_RAIN_UPDATE_INTERVAL_MS;
@@ -47,7 +47,7 @@ void setup() {
   sensors.begin();
   Serial.println("Sensors ready!");
 
-  pinMode(4, INPUT);
+  pinMode(4, INPUT_PULLUP);
   Serial.println("Weather station initialized!");
 
   unsigned long time = millis();
