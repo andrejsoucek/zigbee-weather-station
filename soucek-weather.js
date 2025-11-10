@@ -1,12 +1,4 @@
-const zigbeeHerdsmanConverters = require('zigbee-herdsman-converters');
-const zigbeeHerdsmanUtils = require('zigbee-herdsman-converters/lib/utils');
-
-
-const exposes = zigbeeHerdsmanConverters.exposes;
-const ea = exposes.access;
-const e = exposes.presets;
-const fz = zigbeeHerdsmanConverters.fromZigbeeConverters;
-const tz = zigbeeHerdsmanConverters.toZigbeeConverters;
+import { presets as e, access as ea } from "zigbee-herdsman-converters/lib/exposes";
 
 const weather = {
     "wind_average": 0,
@@ -14,10 +6,12 @@ const weather = {
     "temperature_device": 0,
     "temperature": 0,
     "humidity": 0,
-    "qnh": 0
+    "qnh": 0,
+    "rain": false,
+    "feelslike": 0,
 }
 
-fz.ptvo_switch_uart = {
+const fz_uart_data = {
   cluster: 'genMultistateValue',
   type: ['attributeReport', 'readResponse'],
   convert: (model, msg, publish, options, meta) => {
@@ -47,41 +41,34 @@ fz.ptvo_switch_uart = {
     weather.humidity = receivedData[4] ?? weather.humidity;
     weather.qnh = receivedData[5] ?? weather.qnh;
     weather.temperature_device = receivedData[6] ?? weather.temperature_device;
+    weather.rain = receivedData[7] ?? weather.rain;
+    
+    const vp = (weather.humidity / 100) * 6.105 * Math.exp((17.27 * weather.temperature) / (237.7 + weather.temperature));
+    const wsm = weather.wind_gust * 0.51444; // conversion to m/s
+    const at = weather.temperature + (0.33 * vp) - (0.70 * wsm) - 4;
+    weather.feelslike = Math.round(at);
     
     return weather;
   },
 };
 
 
-const device = {
+export default {
     zigbeeModel: ['soucek-weather'],
     model: 'soucek-weather',
     vendor: 'andrejsoucek',
     description: '[Configurable firmware](https://ptvo.info/zigbee-configurable-firmware-features/)',
-    fromZigbee: [fz.ignore_basic_report, fz.ptvo_switch_uart,],
+    fromZigbee: [fz_uart_data],
     toZigbee: [],
     exposes: [
-        exposes.numeric('wind_average', ea.STATE).withLabel("Wind Average").withUnit("kt").withDescription('Average wind speed updated every minute.'),
-        exposes.numeric('wind_gust', ea.STATE).withLabel("Wind Gust").withUnit("kt").withDescription('Wind gust (max win in last 10 mins)'),
+        e.numeric('wind_average', ea.STATE).withLabel("Wind Average").withUnit("kt").withDescription('Average wind speed updated every minute.'),
+        e.numeric('wind_gust', ea.STATE).withLabel("Wind Gust").withUnit("kt").withDescription('Wind gust (max win in last 10 mins)'),
         e.temperature(),
-        exposes.numeric('temperature_device', ea.STATE).withLabel("Sensor Temperature").withUnit('°C').withDescription('BME280 sensor temperature'),
+        e.numeric('temperature_device', ea.STATE).withLabel("Sensor Temperature").withUnit('°C').withDescription('BME280 sensor temperature'),
         e.humidity(),
-        exposes.numeric('qnh', ea.STATE).withLabel("QNH").withUnit("hPa").withDescription('Calculated QNH'),
+        e.numeric('qnh', ea.STATE).withLabel("QNH").withUnit("hPa").withDescription('Calculated QNH'),
+        e.rain(),
+        e.numeric('feelslike', ea.STATE).withLabel("Feels Like Temperature").withUnit('°C').withDescription('Calculated feels like temperature'),
     ],
-    meta: {
-        multiEndpoint: true,
-    },
-    endpoint: (device) => {
-        return {
-            l1: 1, wind_average: 1, wind_gust: 1, temperature: 1, humidity: 1, qnh: 1, temperature_device: 1
-        };
-    },
-    configure: async (device, coordinatorEndpoint, logger) => {
-        const endpoint = device.getEndpoint(1);
-        await endpoint.read('genBasic', ['modelId', 'swBuildId', 'powerSource']);
-    },
-
+    extend: [],
 };
-
-module.exports = device;
-
