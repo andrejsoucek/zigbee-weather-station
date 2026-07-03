@@ -1,15 +1,14 @@
 import { presets as e, access as ea } from "zigbee-herdsman-converters/lib/exposes";
 
-const weather = {
-    "wind_average": 0,
-    "wind_gust": 0,
-    "temperature_device": 0,
-    "temperature": 0,
-    "humidity": 0,
-    "qnh": 0,
-    "rain": false,
-    "feelslike": 0,
-}
+const KEY_MAP = {
+    1: 'wind_average',
+    2: 'wind_gust',
+    3: 'temperature',
+    4: 'humidity',
+    5: 'qnh',
+    6: 'temperature_device',
+    7: 'rain',
+};
 
 const fz_uart_data = {
   cluster: 'genMultistateValue',
@@ -29,26 +28,47 @@ const fz_uart_data = {
       }
       if (!bHex) {
         data = data.toString('latin1');
-      } else {
-        data = [...data];
       }
     }
-    
-    const receivedData = Object.assign({}, ...data.match(/{.*?}/g).map(JSON.parse));
-    weather.wind_average = receivedData[1] ?? weather.wind_average;
-    weather.wind_gust = receivedData[2] ?? weather.wind_gust;
-    weather.temperature = receivedData[3] ?? weather.temperature;
-    weather.humidity = receivedData[4] ?? weather.humidity;
-    weather.qnh = receivedData[5] ?? weather.qnh;
-    weather.temperature_device = receivedData[6] ?? weather.temperature_device;
-    weather.rain = receivedData[7] ?? weather.rain;
-    
-    const vp = (weather.humidity / 100) * 6.105 * Math.exp((17.27 * weather.temperature) / (237.7 + weather.temperature));
-    const wsm = weather.wind_gust * 0.51444; // conversion to m/s
-    const at = weather.temperature + (0.33 * vp) - (0.70 * wsm) - 4;
-    weather.feelslike = Math.round(at);
-    
-    return weather;
+    if (typeof data !== 'string') {
+      return;
+    }
+
+    // anything that is not a {"n":value} fragment (boot noise, partial
+    // UART frames) is ignored instead of crashing the converter
+    const fragments = data.match(/{.*?}/g);
+    if (!fragments) {
+      return;
+    }
+
+    // publish only the attributes actually received - zigbee2mqtt merges
+    // the partial result into the device state, so missing values keep
+    // their last known value instead of resetting to zero
+    const result = {};
+    for (const fragment of fragments) {
+      let parsed;
+      try {
+        parsed = JSON.parse(fragment);
+      } catch {
+        continue;
+      }
+      for (const [key, property] of Object.entries(KEY_MAP)) {
+        if (parsed[key] !== undefined) {
+          result[property] = parsed[key];
+        }
+      }
+    }
+
+    // Australian apparent temperature (shade version), computed from the
+    // merged state once temperature, humidity and wind have all arrived
+    const { temperature, humidity, wind_average } = { ...meta.state, ...result };
+    if (temperature !== undefined && humidity !== undefined && wind_average !== undefined) {
+      const vp = (humidity / 100) * 6.105 * Math.exp((17.27 * temperature) / (237.7 + temperature));
+      const wsm = wind_average * 0.51444; // conversion to m/s
+      result.feelslike = Math.round(temperature + (0.33 * vp) - (0.70 * wsm) - 4);
+    }
+
+    return result;
   },
 };
 
