@@ -13,7 +13,7 @@
 
 #define ALTITUDE_M 242 // weather station altitude to calculate QNH
 
-#define WIND_PIN A0 // wind speed sensor, connected through the 25 V voltage divider module
+#define WIND_PIN A0 // wind speed sensor 0-5 V output, connected directly
 #define RAIN_PIN 4  // rain sensor J1 OUT
 #define TEMP_PIN 9  // DS18B20 data
 
@@ -52,8 +52,8 @@ void setup() {
 
 float readWindSpeed() {
   int analogValue = analogRead(WIND_PIN);
-  float volts = analogValue * (25.0 / 1023.0); // divider module scales 25 V down to 5 V at the pin
-  float mps = constrain(volts, 0.0, 5.0) * (30.0 / 5.0); // sensor outputs 0-5 V for 0-30 m/s
+  float volts = analogValue * (5.0 / 1023.0);
+  float mps = volts * (30.0 / 5.0); // sensor outputs 0-5 V for 0-30 m/s
   return mps * 1.944; // convert m/s to kts
 }
 

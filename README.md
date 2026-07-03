@@ -12,8 +12,6 @@ https://www.aliexpress.com/item/1005005450438641.html
 https://www.aliexpress.com/item/1879562056.html
 - Anemometr 0-5V
 https://www.aliexpress.com/item/1005003040267066.html
-- Senzor napětí
-https://www.aliexpress.com/item/32556523770.html
 - Dešťový senzor Hydreon RG-9
 https://www.aliexpress.com/item/1005004002486180.html
 - CC Debugger
@@ -65,6 +63,7 @@ Každý z těchto atributů je možné poslat i samostatně.
 
 ### Rychlost větru
 Anemometr posílá na výstup napětí mezi 0 a 5 volty, které znamenají vítr mezi 0 a 30 m/s.
+Výstup anemometru připojíme přímo na analogový pin A0 — rozsah 0-5 V přesně odpovídá rozsahu ADC, není potřeba žádný dělič napětí. Doporučená ochrana: rezistor 4,7-10 kΩ do série s datovým vodičem a kondenzátor 100 nF mezi A0 a GND (filtruje rušení na dlouhém kabelu).
 Postačí tedy přepočítat napětí 0-5 V na 0-30 m/s a výsledek převést na uzly (kt).
 Výsledkem měření rychlosti větru budou dvě hodnoty - průměrná rychlost a rychlost v nárazech.
 Průměrnou rychlost počítám měřením aktuální rychlosti každých 5 sekund a každou minutu tyto naměřené hodnoty zprůměruji.
